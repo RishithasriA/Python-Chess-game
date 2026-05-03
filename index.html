@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chess Game</title>
+
+    <!-- Chessboard CSS -->
+    <link rel="stylesheet"
+    href="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial;
+        }
+        #board {
+            width: 400px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>♟️ Drag & Drop Chess</h2>
+
+<div id="board"></div>
+
+<!-- JS libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+
+<script>
+    var game = new Chess();
+
+    var board = Chessboard('board', {
+        draggable: true,
+        position: 'start',
+
+        onDrop: function (source, target) {
+
+            var move = game.move({
+                from: source,
+                to: target,
+                promotion: 'q'
+            });
+
+            if (move === null) return 'snapback';
+
+            console.log(move.san);
+        }
+    });
+</script>
+
+</body>
+</html>
