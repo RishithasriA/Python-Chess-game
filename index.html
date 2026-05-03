@@ -12,12 +12,20 @@
             text-align: center;
             font-family: Arial;
         }
+
         #board {
-            #board {
-    width: 90%;
-    max-width: 320px;
-    margin: 20px auto;
-}
+            width: 320px;
+            margin: 20px auto;
+        }
+
+        #status {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        button {
+            padding: 10px;
+            margin: 5px;
         }
     </style>
 </head>
@@ -26,9 +34,14 @@
 
 <h2>♟️ Drag & Drop Chess</h2>
 
+<div id="status">Loading...</div>
+
 <div id="board"></div>
 
-<!-- JS libraries -->
+<button onclick="getHint()">💡 Hint</button>
+<button onclick="resetGame()">🔄 Reset</button>
+
+<!-- JS Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
 
@@ -41,17 +54,55 @@
 
         onDrop: function (source, target) {
 
+            // ❗ Try move locally FIRST
             var move = game.move({
                 from: source,
                 to: target,
                 promotion: 'q'
             });
 
-            if (move === null) return 'snapback';
+            // ❌ Illegal move
+            if (move === null) {
+                return 'snapback';
+            }
 
-            console.log(move.san);
+            // ✅ Send to backend
+            fetch('/move', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({from: source, to: target})
+            })
+            .then(res => res.json())
+            .then(data => {
+                updateStatus(data.game_status);
+            });
         }
     });
+
+    function updateStatus(text) {
+        document.getElementById("status").innerText = text;
+    }
+
+    function getHint() {
+        fetch('/hint')
+        .then(res => res.json())
+        .then(data => alert("Hint: " + data.hint));
+    }
+
+    function resetGame() {
+        fetch('/reset', {method: 'POST'})
+        .then(() => {
+            game.reset();
+            board.start();
+            updateStatus("New Game Started");
+        });
+    }
+
+    // Initial status
+    fetch('/status')
+    .then(res => res.json())
+    .then(data => updateStatus(data.game_status));
+
 </script>
 
 </body>
