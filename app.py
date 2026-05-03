@@ -1,68 +1,68 @@
-from flask import Flask, request
+from flask import Flask, render_template, request, jsonify
 import chess
-import chess.svg   # ✅ IMPORTANT (fixes your error)
+import random
 
 app = Flask(__name__)
-
-# Global game board
 game = chess.Board()
 
-@app.route("/", methods=["GET", "POST"])
+# ---------------- HOME ----------------
+@app.route("/")
 def index():
+    return render_template("index.html")
+
+# ---------------- MOVE ----------------
+@app.route("/move", methods=["POST"])
+def move():
     global game
+    data = request.get_json()
 
-    if request.method == "POST":
-        move = request.form.get("move")
+    move = chess.Move.from_uci(data["from"] + data["to"])
 
-        try:
-            chess_move = game.parse_san(move)
+    if move in game.legal_moves:
+        game.push(move)
 
-            if chess_move in game.legal_moves:
-                game.push(chess_move)
-        except:
-            pass
+        return jsonify({
+            "status": "ok",
+            "game_status": get_status()
+        })
+    else:
+        return jsonify({"status": "invalid"})
 
-    # Generate board SVG
-    board_svg = chess.svg.board(board=game)
-
-    # HTML page
-    return f"""
-    <html>
-    <head>
-        <title>Chess Game</title>
-    </head>
-    <body style="text-align:center; font-family:Arial;">
-
-        <h2>♟️ Online Chess Game</h2>
-
-        {board_svg}
-
-        <br><br>
-
-        <form method="POST">
-            <input name="move" placeholder="Enter move (e4, Nf3, Qxd7)" style="padding:10px; width:200px;">
-            <button type="submit" style="padding:10px;">Play</button>
-        </form>
-
-        <br>
-
-        <form method="POST">
-            <input type="hidden" name="reset" value="1">
-            <button type="submit" style="padding:10px;">Reset Game</button>
-        </form>
-
-    </body>
-    </html>
-    """
-
-# Reset support
-@app.before_request
-def reset_game():
+# ---------------- RESET ----------------
+@app.route("/reset", methods=["POST"])
+def reset():
     global game
-    if request.method == "POST" and request.form.get("reset"):
-        game = chess.Board()
+    game = chess.Board()
+    return jsonify({"status": "reset"})
 
+# ---------------- HINT ----------------
+@app.route("/hint")
+def hint():
+    moves = list(game.legal_moves)
+    if not moves:
+        return jsonify({"hint": "No moves available"})
+    move = random.choice(moves)
+    return jsonify({"hint": game.san(move)})
+
+# ---------------- STATUS ----------------
+@app.route("/status")
+def status():
+    return jsonify({"game_status": get_status()})
+
+# ---------------- LOGIC ----------------
+def get_status():
+    if game.is_checkmate():
+        return f"🏆 {'White' if not game.turn else 'Black'} wins by Checkmate!"
+    elif game.is_stalemate():
+        return "🤝 Draw by stalemate"
+    elif game.is_insufficient_material():
+        return "🤝 Draw (insufficient material)"
+    elif game.is_check():
+        return f"⚠️ {'White' if game.turn else 'Black'} is in check"
+    else:
+        return f"{'White' if game.turn else 'Black'} to move"
+
+# ---------------- RUN ----------------
 if __name__ == "__main__":
     import os
-app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-    
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
